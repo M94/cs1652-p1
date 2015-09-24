@@ -1,6 +1,4 @@
-/* UNCOMMENT FOR MINET 
- * #include "minet_socket.h"
- */
+#include "minet_socket.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
