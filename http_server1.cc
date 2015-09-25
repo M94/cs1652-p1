@@ -62,7 +62,7 @@ int main(int argc, char * argv[]) {
     }
 
     /* start listening */
-    if(minet_listen(sock, 5) < 0) { // What value to put for backlog?
+    if(minet_listen(sock, SOMAXCONN) < 0) { // = somaxconn = 128
         fprintf(stderr, "Error listening to socket\n");
     }
 
@@ -118,7 +118,7 @@ int handle_connection(int sock) {
 
     strcpy(copy, totalReceived);
 
-    if(copy[4] == '/') {
+    if(copy[4] == '/') {    // "GET /"
         strcpy(fileName, copy + 5);
     }
 
@@ -139,7 +139,7 @@ int handle_connection(int sock) {
     // Reads data of file into buffer
     char * data = 0;
 
-    // Get length of file to determine size of buffer
+    // Get length of file to determine size of buffer for data
     fseek(fileRequest, 0, SEEK_END);
     int lengthOfFile = ftell(fileRequest);
     fseek(fileRequest, 0, SEEK_SET); // Point back to beginning no file
@@ -151,27 +151,28 @@ int handle_connection(int sock) {
     fread(data, 1, lengthOfFile, fileRequest);
     fclose(fileRequest);
 
-
     /* send response */
     if (ok) {
 
-    
+        /* send headers */
+        if(minet_write(newsock, ok_response_f, strlen(ok_response_f)) < 0) { // + 1?
+            fprintf(stderr, "Error sending header");
+        }
 
-    /* send headers */
-    minet_write(newsock, ok_response_f, strlen(ok_response_f)); // Sends ok message
-
-	/* send file */
-    minet_write(newsock, data, lengthOfFile);
+	   /* send file */
+        if(minet_write(newsock, data, lengthOfFile) < 0) {
+           fprintf(stderr, "Error sending data");
+        }
 	
     } else {
-	// send error response
-    minet_write(newsock, notok_response, strlen(notok_response)); // +1 ?
-
+	   // send error response
+        if(minet_write(newsock, notok_response, strlen(notok_response)) < 0) {// +1 ?
+           fprintf(stderr, "Error sending error");
+       }
     }
 
     /* close socket and free space */
     minet_close(newsock);
-    minet_deinit();
 
     if (ok) {
 	return 0;
