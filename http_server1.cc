@@ -62,7 +62,7 @@ int main(int argc, char * argv[]) {
     }
 
     /* start listening */
-    if(minet_listen(sock, SOMAXCONN) < 0) { // = somaxconn = 128
+    if(minet_listen(sock, SOMAXCONN) < 0) { // somaxconn = 128
         fprintf(stderr, "Error listening to socket\n");
     }
 
@@ -82,6 +82,7 @@ int handle_connection(int sock) {
 	"Content-type: text/plain\r\n"			\
 	"Content-length: %d \r\n\r\n";
  
+    // removed const for minet_write() support
     char * notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"	\
 	"Content-type: text/html\r\n\r\n"			\
 	"<html><body bgColor=black text=white>\n"		\
@@ -93,17 +94,16 @@ int handle_connection(int sock) {
 
     /* first read loop -- get request and headers*/
     char received[BUFSIZE]; // defined as 1024, Takes data in chunks of 1024 bytes?
-    char totalReceived[BUFSIZE * BUFSIZE]; // don't know what size to use, just used large buffer
+    char totalReceived[BUFSIZE * BUFSIZE]; // Is there a more proper size to use?, just used large buffer
     
 
-    //int minet_read(int fd, char *buf, int len);
-    int bytesRead = minet_read(newsock, received, BUFSIZE); // Returns number of bytes read
-    int index = 0; // So the same data isn't read over and over
+    int bytesRead = minet_read(newsock, received, BUFSIZE); // minet_read() returns the number of bytes read
+    int index = 0;
 
     // Loops to read all bytes
-    while(bytesRead > 0 && (index < (BUFSIZE*BUFSIZE))) {
+    while(bytesRead > 0 && (index < (BUFSIZE*BUFSIZE))) { // First condition to ensure bytes are read, Second condition to ensure no reading over buffer size
         memcpy(totalReceived + index, received, bytesRead);
-        index = index + bytesRead;
+        index = index + bytesRead;  // Ensure the same positions in buffer aren't overwritten
 
         bytesRead = minet_read(newsock, received, BUFSIZE); // Reads in more bytes
     }
@@ -136,8 +136,7 @@ int handle_connection(int sock) {
     data = new char[lengthOfFile];
     memset(data, 0, lengthOfFile);
 
-    // size_t fread(void * ptr, size_t size, size_t count, FILE * stream)
-    fread(data, 1, lengthOfFile, fileRequest);
+    fread(data, 1, lengthOfFile, fileRequest); // size_t fread(void * ptr, size_t size, size_t count, FILE * stream)
     fclose(fileRequest);
 
     /* send response */
@@ -153,7 +152,6 @@ int handle_connection(int sock) {
         if(minet_write(newsock, headerSend, strlen(ok_response_f)) < 0) { // + 1?
             fprintf(stderr, "Error sending header");
         }
-        // Already has buffer 
         /* send file */
         if(minet_write(newsock, data, lengthOfFile) < 0) {
            fprintf(stderr, "Error sending data");
@@ -174,6 +172,7 @@ int handle_connection(int sock) {
 
     /* close socket and free space */
     minet_close(newsock);
+    // Necessary to close minet interface or no?
 
     if (ok) {
 	return 0;
