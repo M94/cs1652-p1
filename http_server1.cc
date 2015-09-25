@@ -20,8 +20,7 @@ int main(int argc, char * argv[]) {
     int rc          =  0;
     int sock        = -1; // Is this the socket file descriptor?
 
-    int newsock; // Is this necessary?
-    struct sockaddr_in sa, ca; // Server address, client address?
+    struct sockaddr_in sa;
 
 
     /* parse command line args */
@@ -38,17 +37,16 @@ int main(int argc, char * argv[]) {
     }
 
     /* initialize and make socket */            
-    char type_ku = argv[1]; // Grabs the 2nd argument, kernel or user
 
-    if(type_ku == 'k') {
+    if(toupper(*(argv[1])) == 'k') {
         minet_init(MINET_KERNEL);
-    } else if (type_ku == 'u') {
+    } else if (toupper(*(argv[1])) == 'u') {
         minet_init(MINET_USER);
     } else {
         fprintf(stderr, "usage: http_server1 k|u port\n");
     }
 
-    if(sock = minet_socket(SOCK_STREAM) < 0) {
+    if((sock = minet_socket(SOCK_STREAM)) < 0) {
         fprintf(stderr, "Error making socket\n");
     }
     
@@ -69,8 +67,6 @@ int main(int argc, char * argv[]) {
     }
 
     /* connection handling loop: wait to accept connection */
-    // add wait to connect
-    // newsock = minet_accept(sockfd, &ca); // Doesn't make sense to accept here? Need to connect then accept?
 
     while (1) {
 	/* handle connections */
@@ -81,11 +77,12 @@ int main(int argc, char * argv[]) {
 int handle_connection(int sock) {
     bool ok = false;
 
-    const char * ok_response_f = "HTTP/1.0 200 OK\r\n"	\
+    // removed const for minet_write() support
+    char * ok_response_f = "HTTP/1.0 200 OK\r\n"	\
 	"Content-type: text/plain\r\n"			\
 	"Content-length: %d \r\n\r\n";
  
-    const char * notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"	\
+    char * notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"	\
 	"Content-type: text/html\r\n\r\n"			\
 	"<html><body bgColor=black text=white>\n"		\
 	"<h2>404 FILE NOT FOUND</h2>\n"
@@ -117,7 +114,7 @@ int handle_connection(int sock) {
     /* Assumption: this is a GET request and filename contains no spaces*/
 
     char fileName[FILENAMESIZE]; // defined as 100
-    char * copy = new char[strlen(totalReceived)] // +1? 
+    char * copy = new char[strlen(totalReceived)]; // +1? 
 
     strcpy(copy, totalReceived);
 
@@ -148,7 +145,7 @@ int handle_connection(int sock) {
     fseek(fileRequest, 0, SEEK_SET); // Point back to beginning no file
     
     data = new char[lengthOfFile];
-    memset(lengthOfFile, 0, lengthOfFile);
+    memset(data, 0, lengthOfFile);
 
     // size_t fread(void * ptr, size_t size, size_t count, FILE * stream)
     fread(data, 1, lengthOfFile, fileRequest);
@@ -158,19 +155,24 @@ int handle_connection(int sock) {
     /* send response */
     if (ok) {
 
-	/* send headers */
-	//char * toSend = new char[strlen(ok_response_f)];
-    //memset(toSend, 0, strlen(ok_response_f));
+    
+
+    /* send headers */
+    minet_write(newsock, ok_response_f, strlen(ok_response_f)); // Sends ok message
 
 	/* send file */
+    minet_write(newsock, data, lengthOfFile);
 	
     } else {
 	// send error response
-        minet_write(newsock, notok_response, strlen(notok_response)); // +1 ? 
+    minet_write(newsock, notok_response, strlen(notok_response)); // +1 ?
+
     }
 
     /* close socket and free space */
-  
+    minet_close(newsock);
+    minet_deinit();
+
     if (ok) {
 	return 0;
     } else {
