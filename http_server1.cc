@@ -95,7 +95,6 @@ int handle_connection(int sock) {
     /* first read loop -- get request and headers*/
     char received[BUFSIZE]; // defined as 1024, Takes data in chunks of 1024 bytes?
     char totalReceived[BUFSIZE * BUFSIZE]; // Is there a more proper size to use?, just used large buffer
-    
 
     int bytesRead = minet_read(newsock, received, BUFSIZE); // minet_read() returns the number of bytes read
     int index = 0;
@@ -136,7 +135,9 @@ int handle_connection(int sock) {
     data = new char[lengthOfFile];
     memset(data, 0, lengthOfFile);
 
-    fread(data, 1, lengthOfFile, fileRequest); // size_t fread(void * ptr, size_t size, size_t count, FILE * stream)
+    if(fread(data, 1, lengthOfFile, fileRequest)) { // size_t fread(void * ptr, size_t size, size_t count, FILE * stream)
+        ok = true; // We want true no matter what because we have to output an error message
+    }
     fclose(fileRequest);
 
     /* send response */
