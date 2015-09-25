@@ -115,6 +115,7 @@ int handle_connection(int sock) {
 
     char fileName[FILENAMESIZE]; // defined as 100
     
+    // WOULD THIS WORK?
     if(totalReceived[4] == '/') {
         strcpy(fileName, totalReceived + 5); // "GET /" // File name is after the forward slash in get request
     }
@@ -142,9 +143,14 @@ int handle_connection(int sock) {
     /* send response */
     if (ok) {
 
-        // Have to create character buffer for this to work?
+        // Have to create allocate memory for character buffer for this to work?
         /* send headers */
-        if(minet_write(newsock, ok_response_f, strlen(ok_response_f)) < 0) { // + 1?
+        int lengthOfHeader = strlen(ok_response_f);
+        char * headerSend = new char[lengthOfHeader];
+        memset(headerSend, 0, lengthOfHeader);
+        strcpy(headerSend, ok_response_f);
+
+        if(minet_write(newsock, headerSend, strlen(ok_response_f)) < 0) { // + 1?
             fprintf(stderr, "Error sending header");
         }
         // Already has buffer 
@@ -154,9 +160,14 @@ int handle_connection(int sock) {
         }
 	
     } else {
-        // Have to create character buffer for this to work?
+        // Have to allocate memory for character buffer for this to work?
 	    // send error response
-        if(minet_write(newsock, notok_response, strlen(notok_response)) < 0) {// +1 ?
+        int lengthOfError = strlen(notok_response);
+        char * errorSend = new char[lengthOfError];
+        memset(errorSend, 0, lengthOfError);
+        strcpy(errorSend, notok_response);
+
+        if(minet_write(newsock, errorSend, strlen(notok_response)) < 0) {// +1 ?
            fprintf(stderr, "Error sending error");
        }
     }
