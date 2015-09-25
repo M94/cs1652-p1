@@ -100,41 +100,29 @@ int handle_connection(int sock) {
     int bytesRead = minet_read(newsock, received, BUFSIZE); // Returns number of bytes read
     int index = 0; // So the same data isn't read over and over
 
+    // Loops to read all bytes
     while(bytesRead > 0 && (index < (BUFSIZE*BUFSIZE))) {
-        //memcpy(destination, source, size)
         memcpy(totalReceived + index, received, bytesRead);
         index = index + bytesRead;
 
         bytesRead = minet_read(newsock, received, BUFSIZE); // Reads in more bytes
     }
     
-    printf("%s\n", totalReceived); // prints the bytes received
+    // printf("%s\n", totalReceived); // Check to see if functional: prints the bytes received
 
     /* parse request to get file name */
     /* Assumption: this is a GET request and filename contains no spaces*/
 
     char fileName[FILENAMESIZE]; // defined as 100
-    char * copy = new char[strlen(totalReceived)]; // +1? 
-
-    strcpy(copy, totalReceived);
-
-    if(copy[4] == '/') {    // "GET /"
-        strcpy(fileName, copy + 5);
+    
+    if(totalReceived[4] == '/') {
+        strcpy(fileName, totalReceived + 5); // "GET /" // File name is after the forward slash in get request
     }
-
-    //////
-    // Add other cases of finding file name
-    //////
 
     /* try opening the file */
     FILE * fileRequest = 0;
-    int fileNameLength = strlen(fileName);
 
     fileRequest = fopen(fileName, "rb");
-
-    /////
-    //  Add other cases of fopen
-    /////
 
     // Reads data of file into buffer
     char * data = 0;
@@ -154,18 +142,20 @@ int handle_connection(int sock) {
     /* send response */
     if (ok) {
 
+        // Have to create character buffer for this to work?
         /* send headers */
         if(minet_write(newsock, ok_response_f, strlen(ok_response_f)) < 0) { // + 1?
             fprintf(stderr, "Error sending header");
         }
-
-	   /* send file */
+        // Already has buffer 
+        /* send file */
         if(minet_write(newsock, data, lengthOfFile) < 0) {
            fprintf(stderr, "Error sending data");
         }
 	
     } else {
-	   // send error response
+        // Have to create character buffer for this to work?
+	    // send error response
         if(minet_write(newsock, notok_response, strlen(notok_response)) < 0) {// +1 ?
            fprintf(stderr, "Error sending error");
        }
