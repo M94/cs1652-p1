@@ -28,7 +28,6 @@ int main(int argc, char * argv[]) {
 	fprintf(stderr, "usage: http_server1 k|u port\n");
 	exit(-1);
     }
-
     server_port = atoi(argv[2]);
 
     if (server_port < 1500) {
@@ -38,16 +37,19 @@ int main(int argc, char * argv[]) {
 
     /* initialize and make socket */            
 
-    if(toupper(*(argv[1])) == 'k') {
+    if(tolower(*(argv[1])) == 'k') {
         minet_init(MINET_KERNEL);
-    } else if (toupper(*(argv[1])) == 'u') {
+    } else if (tolower(*(argv[1])) == 'u') {
         minet_init(MINET_USER);
     } else {
         fprintf(stderr, "usage: http_server1 k|u port\n");
+	exit(-1);
     }
 
     if((sock = minet_socket(SOCK_STREAM)) < 0) {
         fprintf(stderr, "Error making socket\n");
+	minet_perror(NULL);
+	exit(-1);
     }
     
     /* set server address*/
@@ -59,11 +61,15 @@ int main(int argc, char * argv[]) {
     /* bind listening socket */
     if(minet_bind(sock, &sa) < 0) {
         fprintf(stderr, "Error binding socket\n");
+	minet_perror(NULL);
+    	exit(-1);
     }
 
     /* start listening */
     if(minet_listen(sock, SOMAXCONN) < 0) { // somaxconn = 128
         fprintf(stderr, "Error listening to socket\n");
+	minet_perror(NULL);
+    	exit(-1);
     }
 
     /* connection handling loop: wait to accept connection */
