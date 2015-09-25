@@ -100,7 +100,7 @@ int handle_connection(int sock) {
     
 
     //int minet_read(int fd, char *buf, int len);
-    int bytesRead = minet_read(newsock, bufbuf, BUFSIZE); // Returns number of bytes read
+    int bytesRead = minet_read(newsock, received, BUFSIZE); // Returns number of bytes read
     int index = 0; // So the same data isn't read over and over
 
     while(bytesRead > 0 && (index < (BUFSIZE*BUFSIZE))) {
