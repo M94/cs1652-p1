@@ -21,7 +21,7 @@
 int main(int argc, char * argv[]) {
 
     char * server_name = NULL;
-    char * server_port = NULL;
+    int server_port = NULL;        // Changed to int for struct sockaddr_in support
     char * server_path = NULL;
     char * req         = NULL; // request
     int status         = 0;
@@ -35,7 +35,7 @@ int main(int argc, char * argv[]) {
     }
 
     server_name = argv[2];
-    server_port = argv[3];
+    server_port = atoi(argv[3]);
     server_path = argv[4];
 
     req = (char *)malloc(strlen("GET  HTTP/1.0\r\n\r\n") + strlen(server_path) + 2); // sets request for later
@@ -47,11 +47,11 @@ int main(int argc, char * argv[]) {
         minet_init(MINET_USER);
     } else {
 	   fprintf(stderr, "First argument must be k or u\n");
-	   exit(-1);
+	   exit(-1);   
     }
 
     /* make socket */
-    if(sock = minet_socket(SOCK_STREAM) < 0) {
+    if((sock = minet_socket(SOCK_STREAM)) < 0) {
         fprintf(stderr, "Error making socket");
     }
 
@@ -62,17 +62,20 @@ int main(int argc, char * argv[]) {
 
     /* set address */
     struct sockaddr_in sock_addr;
-    sockaddr.sin_family = AF_INET;
-    sockaddr.sin_port = htons(server_port); // changes byte order for server?
-    sockaddr.sin_addr.saddr = host_addr; 
-    
+    sock_addr.sin_family = AF_INET;
+    // server_port = atoi(server_port); // fix invalid conversion error... // WHY DOES THIS NOT WORK BUT server_port = atoi(argv[3]) WORKS?
+    sock_addr.sin_port = htons(server_port); // changes byte order for server
+    char * hostAddress = hosty -> h_addr_list[0];
+    int hostAddressLength = hosty -> h_length;
+    memcpy(&sock_addr.sin_addr.s_addr, hostAddress, hostAddressLength); // jesus christ
+
     /* connect to the server socket */
-    if (minet_connect(sock, &sockaddr) < 0) {
+    if(minet_connect(sock, &sock_addr) < 0) {
         fprintf(stderr, "Error connecting socket");
     }
 
     /* send request message */
-    sprintf(req, "GET /%s HTTP/1.0\r\n\r\n", server_path);
+    sprintf(req, "GET /%s HTTP/1.0\r\n\r\n", server_path); 
     if(minet_write(sock, req, strlen(req)) < 0) {
         fprintf(stderr, "Error sending request");
     }
@@ -83,8 +86,8 @@ int main(int argc, char * argv[]) {
     FD_ZERO(&rfds);
     FD_SET(sock, &rfds);
 
-    if (status = select(sock + 1, &rfds, NULL, NULL, NULL) < 0) {
-        fprintf(stderr, "Error waiting for socket to be read")
+    if ((status = select(sock + 1, &rfds, NULL, NULL, NULL)) < 0) {
+        fprintf(stderr, "Error waiting for socket to be read");
     }
     /* first read loop -- read headers */
     char received[BUFSIZE];
@@ -99,7 +102,7 @@ int main(int argc, char * argv[]) {
         memcpy(totalReceived + index, received, bytesRead);
         index = index + bytesRead;  // Ensure the same positions in buffer aren't overwritten
 
-        bytesRead = minet_read(newsock, received, BUFSIZE); // Reads in more bytes
+        bytesRead = minet_read(sock, received, BUFSIZE); // Reads in more bytes
     }
     char * header = strstr(totalReceived, "\r\n\r\n");
     /* examine return code */
