@@ -23,8 +23,10 @@ int main(int argc, char * argv[]) {
     char * server_name = NULL;
     char * server_port = NULL;
     char * server_path = NULL;
-    char * req         = NULL;
+    char * req         = NULL; // request
     int status         = 0;
+
+    int sock;
 
     /*parse args */
     if (argc != 5) {
@@ -35,93 +37,84 @@ int main(int argc, char * argv[]) {
     server_name = argv[2];
     server_port = argv[3];
     server_path = argv[4];
-    req = (char *)malloc(strlen("GET  HTTP/1.0\r\n\r\n") 
-			 + strlen(server_path) + 2);  
+
+    req = (char *)malloc(strlen("GET  HTTP/1.0\r\n\r\n") + strlen(server_path) + 2); // sets request for later
 
     /* initialize */
     if (toupper(*(argv[1])) == 'K') { 
-	/* UNCOMMENT FOR MINET 
-	 * minet_init(MINET_KERNEL);
-         */
+        minet_init(MINET_KERNEL);
     } else if (toupper(*(argv[1])) == 'U') { 
-	/* UNCOMMENT FOR MINET 
-	 * minet_init(MINET_USER);
-	 */
+        minet_init(MINET_USER);
     } else {
-	fprintf(stderr, "First argument must be k or u\n");
-	exit(-1);
+	   fprintf(stderr, "First argument must be k or u\n");
+	   exit(-1);
     }
 
     /* make socket */
-    //int socket = socket(AF_INET, SOCK_STREAM);
+    if(sock = minet_socket(SOCK_STREAM) < 0) {
+        fprintf(stderr, "Error making socket");
+    }
+
     /* get host IP address  */
     /* Hint: use gethostbyname() */
-    //int host_addr = gethostbyname(server_name)->h_addr;
+    struct hostent *hosty;
+    hosty = gethostbyname(server_name);
+
     /* set address */
-    //struct sockaddr_in sock_addr;
-    //sockaddr.sin_family = AF_INET;
-    //sockaddr.sin_port = server_port;
-    //sockaddr.sin_addr.saddr = host_addr; 
+    struct sockaddr_in sock_addr;
+    sockaddr.sin_family = AF_INET;
+    sockaddr.sin_port = htons(server_port); // changes byte order for server?
+    sockaddr.sin_addr.saddr = host_addr; 
     
-    /* better way to make socket */
-    struct addrinfo hints, *res;
-    int sock;
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    getaddrinfo(server_name, server_port, &hints, &res);
-    sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     /* connect to the server socket */
-    status = connect(sock, res->ai_addr, res->ai_addrlen);
-    if (status == -1) {
-       	fprintf(stderr, "Error connecting to server socket\n"); 
-    	exit(-1); 
-    } else fprintf(stdout, "Connected to server socket\n");
+    if (minet_connect(sock, &sockaddr) < 0) {
+        fprintf(stderr, "Error connecting socket");
+    }
+
     /* send request message */
     sprintf(req, "GET /%s HTTP/1.0\r\n\r\n", server_path);
-    fprintf(stdout, "Sending request:\n%s", req);
-    status = send(sock, req, strlen(req), 0);
-    if (status == -1) {
-    	fprintf(stderr, "Error sending request");
-    	exit(-1);
-    } else fprintf(stdout, "Request sent\n");
-    /* wait till socket can be read. */
-    /* Hint: use select(), and ignore timeout for now. */
+    if(minet_write(sock, req, strlen(req)) < 0) {
+        fprintf(stderr, "Error sending request");
+    }
+
+    /* wait till socket can be read */
+    /* Hint: use select(), and ignore timeout for now */
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(sock, &rfds);
-    status = select(sock + 1, &rfds, NULL, NULL, NULL);
-    if (status == -1) {
-    	fprintf(stderr, "Error waiting for socket to be read\n");
-    	exit(-1);
-    } else fprintf(stdout, "Socket read\n");
-    	
+
+    if (status = select(sock + 1, &rfds, NULL, NULL, NULL) < 0) {
+        fprintf(stderr, "Error waiting for socket to be read")
+    }
     /* first read loop -- read headers */
-    char * header = (char *)malloc(128); 
-    FILE * fsock = fdopen(sock, "r"); 
-    fgets(header, 128, fsock);
+    char received[BUFSIZE];
+    char totalReceived[BUFSIZE * BUFSIZE]; // Is there a more proper size to use?, just used large buffer
+
+
+    int bytesRead = minet_read(sock, received, BUFSIZE);
+    int index = 0;
+
+    // Loops to read all bytes
+    while(bytesRead > 0 && (index < (BUFSIZE*BUFSIZE))) { // First condition to ensure bytes are read, Second condition to ensure no reading over buffer size
+        memcpy(totalReceived + index, received, bytesRead);
+        index = index + bytesRead;  // Ensure the same positions in buffer aren't overwritten
+
+        bytesRead = minet_read(newsock, received, BUFSIZE); // Reads in more bytes
+    }
+    char * header = strstr(totalReceived, "\r\n\r\n");
     /* examine return code */
-    char * temp = (char *)malloc(128);
-    char * ret_code = NULL;    
-    strcpy(temp, header);
-    strtok(temp, " ");
-    ret_code = strtok(NULL, " ");
+    // Get status code
+
     // Normal reply has return code 200
-    status = strcmp(ret_code, "200");
+    if(status == 200) {
     /* print first part of response: header, error code, etc. */
-    fprintf(stdout, "Response:\n");
-    if (status == 0) fprintf(stdout, "%s\n", header);
-    else fprintf(stderr, "%s\n", header);	
+        // minet_write()
+    }
     /* second read loop -- print out the rest of the response: real web content */
-    char * content = (char *)malloc(256);
-    do {
-    	content = fgets(content, 256, fsock);
-    	if (content != NULL) {
-		if (status == 0) fprintf(stdout, "%s", content);
-		else fprintf(stderr, "%s", content);
-	}
-    } while (content != NULL);
-    /*close socket and deinitialize */
-    close(sock);
-    return status;
+        // minet_write()
+
+    /* close socket and deinitialize */
+
+    minet_close(sock);
+    minet_deinit();
 }
