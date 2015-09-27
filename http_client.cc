@@ -3,10 +3,7 @@
  * CS1652 F15
  */
 
-/* UNCOMMENT FOR MINET 
- * #include "minet_socket.h"
- */
-
+#include "minet_socket.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -38,7 +35,7 @@ int main(int argc, char * argv[]) {
     server_port = atoi(argv[3]);
     server_path = argv[4];
 
-    req = (char *)malloc(strlen("GET  HTTP/1.0\r\n\r\n") + strlen(server_path) + 2); // sets request for later
+    req = (char *)malloc(strlen("GET  HTTP/1.0\r\n\r\n") + strlen(server_path) + 1); // sets request for later
 
     /* initialize */
     if (toupper(*(argv[1])) == 'K') { 
@@ -75,7 +72,7 @@ int main(int argc, char * argv[]) {
     }
 
     /* send request message */
-    sprintf(req, "GET /%s HTTP/1.0\r\n\r\n", server_path); 
+    sprintf(req, "GET %s HTTP/1.0\r\n\r\n", server_path); 
     if(minet_write(sock, req, strlen(req)) < 0) {
         fprintf(stderr, "Error sending request");
     }
@@ -105,19 +102,20 @@ int main(int argc, char * argv[]) {
         bytesRead = minet_read(sock, received, BUFSIZE); // Reads in more bytes
     }
     char * header = strstr(totalReceived, "\r\n\r\n");
+    printf("%s", header);
     /* examine return code */
     // Get status code
 
     // Normal reply has return code 200
     if(status == 200) {
     /* print first part of response: header, error code, etc. */
-        // minet_write()
     }
+
     /* second read loop -- print out the rest of the response: real web content */
-        // minet_write()
+    //minet_read(sock, totalReceived, BUFSIZE * BUFSIZE);
+    printf("%s", totalReceived);
 
     /* close socket and deinitialize */
-
     minet_close(sock);
     minet_deinit();
 }
