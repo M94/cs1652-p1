@@ -1,14 +1,8 @@
 #include "minet_socket.h"
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>          /* See NOTES */
-#include <sys/socket.h>
-#include <netdb.h>
-
 
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
@@ -22,12 +16,12 @@ int main(int argc, char * argv[]) {
 
     struct sockaddr_in sa;
 
-
     /* parse command line args */
     if (argc != 3) {
-	fprintf(stderr, "usage: http_server1 k|u port\n");
+	fprintf(stderr, "usage: http_server1 k|u portAHH\n");
 	exit(-1);
     }
+
     server_port = atoi(argv[2]);
 
     if (server_port < 1500) {
@@ -36,20 +30,16 @@ int main(int argc, char * argv[]) {
     }
 
     /* initialize and make socket */            
-
     if(tolower(*(argv[1])) == 'k') {
         minet_init(MINET_KERNEL);
     } else if (tolower(*(argv[1])) == 'u') {
         minet_init(MINET_USER);
     } else {
-        fprintf(stderr, "usage: http_server1 k|u port\n");
-	exit(-1);
+        fprintf(stderr, "usage: http_server1 k|u port AUSTIN FUCKED ME\n");
     }
 
     if((sock = minet_socket(SOCK_STREAM)) < 0) {
         fprintf(stderr, "Error making socket\n");
-	minet_perror(NULL);
-	exit(-1);
     }
     
     /* set server address*/
@@ -61,15 +51,11 @@ int main(int argc, char * argv[]) {
     /* bind listening socket */
     if(minet_bind(sock, &sa) < 0) {
         fprintf(stderr, "Error binding socket\n");
-	minet_perror(NULL);
-    	exit(-1);
     }
 
     /* start listening */
     if(minet_listen(sock, SOMAXCONN) < 0) { // somaxconn = 128
         fprintf(stderr, "Error listening to socket\n");
-	minet_perror(NULL);
-    	exit(-1);
     }
 
     /* connection handling loop: wait to accept connection */
@@ -78,6 +64,7 @@ int main(int argc, char * argv[]) {
 	/* handle connections */
 	rc = handle_connection(sock);
     }
+    close(sock);
 }
 
 int handle_connection(int sock) {
@@ -113,22 +100,27 @@ int handle_connection(int sock) {
         bytesRead = minet_read(newsock, received, BUFSIZE); // Reads in more bytes
     }
     
-    // printf("%s\n", totalReceived); // Check to see if functional: prints the bytes received
+    printf("%s\n", totalReceived); // Check to see if functional: prints the bytes received
 
     /* parse request to get file name */
     /* Assumption: this is a GET request and filename contains no spaces*/
 
     char fileName[FILENAMESIZE]; // defined as 100
-    
-    // WOULD THIS WORK?
-    if(totalReceived[4] == '/') {
-        strcpy(fileName, totalReceived + 5); // "GET /" // File name is after the forward slash in get request
-    }
+  
+    char * fileStart = strchr(totalReceived, ' ') + 1;
+    char * fileEnd = strchr(fileStart, ' ');
+    int fileNameLength = strlen(fileStart) - strlen(fileEnd);
+    strcpy(fileName, fileStart);
+    int toCut = strlen(fileName) - fileNameLength;
+    fileName[strlen(fileName) - toCut] = 0;
+
+    printf("name is %s\n", fileName);
 
     /* try opening the file */
     FILE * fileRequest = 0;
 
     fileRequest = fopen(fileName, "rb");
+
 
     // Reads data of file into buffer
     char * data = 0;
@@ -175,7 +167,7 @@ int handle_connection(int sock) {
         if(minet_write(newsock, errorSend, strlen(notok_response)) < 0) {// +1 ?
            fprintf(stderr, "Error sending error");
        }
-    }
+    }   
 
     /* close socket and free space */
     minet_close(newsock);

@@ -3,9 +3,9 @@
  * CS1652 F15
  */
 
-/* UNCOMMENT FOR MINET 
- * #include "minet_socket.h"
- */
+
+#include "minet_socket.h"
+
 
 #include <stdio.h>
 #include <string.h>
@@ -40,13 +40,9 @@ int main(int argc, char * argv[]) {
 
     /* initialize */
     if (toupper(*(argv[1])) == 'K') { 
-	/* UNCOMMENT FOR MINET 
-	 * minet_init(MINET_KERNEL);
-         */
+	minet_init(MINET_KERNEL);
     } else if (toupper(*(argv[1])) == 'U') { 
-	/* UNCOMMENT FOR MINET 
-	 * minet_init(MINET_USER);
-	 */
+	minet_init(MINET_USER);
     } else {
 	fprintf(stderr, "First argument must be k or u\n");
 	exit(-1);
@@ -80,8 +76,8 @@ int main(int argc, char * argv[]) {
     /* send request message */
     sprintf(req, "GET /%s HTTP/1.0\r\n\r\n", server_path);
     fprintf(stdout, "Sending request:\n%s", req);
-    status = send(sock, req, strlen(req), 0);
-    if (status == -1) {
+    status = minet_write(sock, req, strlen(req));
+    if (status < 0) {
     	fprintf(stderr, "Error sending request");
     	exit(-1);
     } else fprintf(stdout, "Request sent\n");
@@ -90,8 +86,8 @@ int main(int argc, char * argv[]) {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(sock, &rfds);
-    status = select(sock + 1, &rfds, NULL, NULL, NULL);
-    if (status == -1) {
+    status = minet_select(sock + 1, &rfds, NULL, NULL, NULL);
+    if (status < 0) {
     	fprintf(stderr, "Error waiting for socket to be read\n");
     	exit(-1);
     } else fprintf(stdout, "Socket read\n");
@@ -122,6 +118,6 @@ int main(int argc, char * argv[]) {
 	}
     } while (content != NULL);
     /*close socket and deinitialize */
-    close(sock);
+    minet_close(sock);
     return status;
 }
